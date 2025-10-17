@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fully Secure Web Chat</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600&display=swap');
+        body { font-family: 'Inter', 'Poppins', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif; margin: 0; height: 100vh; background: radial-gradient(1200px 800px at 80% -10%, rgba(110,231,183,0.15), transparent), radial-gradient(800px 600px at -10% 10%, rgba(96,165,250,0.18), transparent), #0f1724; color: #e5e7eb; }
+        a { color: #60a5fa; }
+        #app-container { display: flex; height: 100%; backdrop-filter: blur(10px); }
+        .glass { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 30px rgba(0,0,0,0.1); }
+        #conversations-panel { width: 28%; max-width: 320px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); }
+        #panel-top { padding: 14px; display: flex; align-items: center; gap: 8px; }
+        #search-input { flex: 1; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(15,23,36,0.6); color: #e5e7eb; }
+        #new-chat-button { padding: 10px 12px; border-radius: 10px; border: none; cursor: pointer; background: linear-gradient(135deg, #6ee7b7, #60a5fa); color: #0f1724; font-weight: 700; }
+        #conversations-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex-grow: 1; }
+        #conversations-list li { padding: 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; transition: background 0.2s ease; }
+        #conversations-list li:hover { background-color: rgba(255,255,255,0.06); }
+        #conversations-list li.active { background: linear-gradient(135deg, rgba(110,231,183,0.18), rgba(96,165,250,0.2)); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+        .name { display: flex; align-items: center; gap: 8px; }
+        .unread-badge { background: #60a5fa; color: #0f1724; font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 999px; display: none; }
+        li.has-new-message .unread-badge { display: inline-block; }
+        .delete-btn { font-size: 18px; color: #9ca3af; cursor: pointer; padding: 0 5px; font-weight: bold; }
+        .delete-btn:hover { color: #f87171; }
+        #panel-footer { padding: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+        #delete-account-button { width: 100%; padding: 10px; background: rgba(248,113,113,0.2); color: #fecaca; border: 1px solid rgba(248,113,113,0.3); border-radius: 10px; cursor: pointer; font-weight: bold; }
+        #delete-account-button:hover { background: rgba(248,113,113,0.3); }
+        #chat-panel { flex-grow: 1; display: flex; flex-direction: column; }
+        #chat-header { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; }
+        #header-left { display: flex; align-items: center; gap: 10px; }
+        #status-dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 10px #10b981; }
+        #e2e-badge { padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; border: 1px solid rgba(255,255,255,0.15); background: rgba(15,23,36,0.6); display: inline-flex; align-items: center; gap: 6px; }
+        #e2e-badge::before { content: '🔒'; color: #10b981; }
+        #e2e-badge[title] { cursor: help; }
+        #chat-log { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)); }
+        #chat-log .message { margin-bottom: 12px; padding: 10px 14px; border-radius: 18px; max-width: 70%; line-height: 1.5; word-wrap: break-word; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: transform 0.15s ease; }
+        #chat-log .message:hover { transform: translateY(-1px); }
+        #chat-log .sent { align-self: flex-end; background: linear-gradient(135deg, rgba(110,231,183,0.3), rgba(96,165,250,0.28)); border-color: rgba(110,231,183,0.35); }
+        #chat-log .received { align-self: flex-start; background: rgba(255,255,255,0.08); }
+        #chat-log .system { color: #9ca3af; font-style: italic; text-align: center; align-self: center; margin: 10px 0; background: transparent; border: none; }
+        .timestamp { display: block; font-size: 11px; color: #9ca3af; margin-top: 4px; }
+        #input-container { display: flex; align-items: center; padding: 10px; border-top: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); }
+        #message-input { flex-grow: 1; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; resize: none; background: rgba(15,23,36,0.6); color: #e5e7eb; }
+        #send-button { padding: 10px 16px; margin-left: 10px; border-radius: 12px; border: none; background: linear-gradient(135deg, #6ee7b7, #60a5fa); color: #0f1724; cursor: pointer; font-weight: 700; }
+        #login-container { display: flex; justify-content: center; align-items: center; height: 100%; }
+        #login-box { padding: 24px; text-align: center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 10px; width: 280px; }
+        #login-box input { padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(15,23,36,0.6); color: #e5e7eb; }
+        #login-box button { padding: 10px; cursor: pointer; border: none; border-radius: 10px; }
+        #login-box #login-button { background: linear-gradient(135deg, #6ee7b7, #60a5fa); color: #0f1724; font-weight: 700; }
+        #login-box #register-button { background: rgba(96,165,250,0.2); color: #bfdbfe; border: 1px solid rgba(96,165,250,0.35); }
+        #forgot-password { font-size: 12px; color: #93c5fd; cursor: pointer; margin-top: 10px; }
+        #file-input-label { cursor: pointer; padding: 10px; font-size: 20px; }
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+    <div id="login-container">
+        <div id="login-box">
+            <h2 id="login-title">Secure Login</h2>
+            <input type="text" id="username-input" placeholder="Enter your username">
+            <input type="password" id="password-input" placeholder="Enter your password">
+            <div id="auth-buttons">
+                <button id="login-button">Login</button>
+                <button id="register-button">Register</button>
+            </div>
+            <p id="auth-message" style="color: red; height: 1em;"></p>
+            <a id="forgot-password">Forgot Password?</a>
+        </div>
+    </div>
+    <div id="app-container" style="display: none;">
+        <div id="conversations-panel" class="glass">
+            <div id="panel-top">
+                <input id="search-input" type="text" placeholder="Search chats or messages" />
+                <button id="new-chat-button" title="Start new chat">New</button>
+            </div>
+            <ul id="conversations-list"></ul>
+            <div id="panel-footer">
+                <button id="delete-account-button">Delete My Account</button>
+            </div>
+        </div>
+        <div id="chat-panel" class="glass">
+            <div id="chat-header">
+                <div id="header-left">
+                    <div id="status-dot" title="Secure connection status"></div>
+                    <div id="chat-title">Select a conversation</div>
+                </div>
+                <div id="e2e-badge" title="End-to-End Encrypted">⚠️ Unsecure</div>
+            </div>
+            <div id="chat-log"></div>
+            <div id="input-container">
+                <label id="file-input-label" for="file-input" title="Send a file">📎</label>
+                <input type="file" id="file-input">
+                <input type="text" id="message-input" placeholder="Type a message...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="chat.js"></script>
+</body>
+</html>
